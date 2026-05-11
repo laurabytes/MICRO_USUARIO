@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senha     String
+  tipo      String   @default("Leitor")
+  status    String   @default("Ativo")
+  createdAt DateTime @default(now())
+
+  enderecos Endereco[]
+  telefones Telefone[]
+  logs      LogAtividade[]
+
+  @@map("usuarios")
+}
+
+model Endereco {
+  id         Int     @id @default(autoincrement())
+  logradouro String
+  numero     String
+  cidade     String
+  usuarioId  Int
+  usuario    Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("enderecos")
+}
+
+model Telefone {
+  id        Int     @id @default(autoincrement())
+  ddd       String
+  numero    String
+  usuarioId Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("telefones")
+}
+
+model LogAtividade {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  acao      String
+  data      DateTime @default(now())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@map("logs_atividade")
+}
