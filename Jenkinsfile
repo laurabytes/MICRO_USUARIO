@@ -17,9 +17,9 @@ pipeline {
 
         stage('Instalar Dependências') {
             steps {
-              idor
-                bat 'npm install'
-                bat 'npx prisma generate'
+
+                sh 'npm install'
+                sh 'npx prisma generate'
             }
         }
 
@@ -32,7 +32,7 @@ pipeline {
                     def appName = 'micro-usuario'
                     def imageTag = "${appName}:${env.BUILD_ID}"
 
-                    bat "docker build -t ${imageTag} ."
+                    sh "docker build -t ${imageTag} ."
                 }
             }
         }
@@ -43,10 +43,10 @@ pipeline {
                     def appName = 'micro-usuario'
                     def imageTag = "${appName}:${env.BUILD_ID}"
 
-                    bat "docker stop ${appName} || echo 0"
-                    bat "docker rm -v ${appName} || echo 0"
+                    sh "docker stop ${appName} || echo 0"
+                    sh "docker rm -v ${appName} || echo 0"
                 
-                    bat "docker run -d --name ${appName} -p 9501:9501 ${imageTag}"
+                    sh "docker run -d --name ${appName} -p 9501:9501 ${imageTag}"
                 }
             }
         }
