@@ -1,5 +1,5 @@
 # Estágio de construção
-FROM node:20-slim
+FROM node:22-slim
 
 # Instalar dependências necessárias para o Prisma e MySQL
 RUN apt-get update && apt-get install -y openssl
