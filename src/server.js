@@ -1,51 +1,53 @@
 require('dotenv').config();
 const { InfisicalSDK } = require('@infisical/sdk');
-const buildApp = require('./app');
-const { connect, close } = require('./config/rabbitmq');
-
-const PORT = Number(process.env.PORT) || 9501;
 
 async function start() {
   try {
-    const siteUrl = process.env.NODE_ENV === 'production' 
-      ? "http://host.docker.internal:8081" 
-      : "http://localhost:8081";
+    // 1. Configura o SDK apontando para o IP local (estabilidade no Windows)
+    const client = new InfisicalSDK({ 
+      siteUrl: "http://127.0.0.1:8081" 
+    });
 
-    const client = new InfisicalSDK({ siteUrl });
-
-    console.log(`[Infisical] Conectando em ${siteUrl}...`);
+    console.log('[Infisical] Autenticando...');
 
     await client.auth().universalAuth.login({
       clientId: process.env.INFISICAL_CLIENT_ID,
       clientSecret: process.env.INFISICAL_CLIENT_SECRET
     });
 
+    // 2. Busca segredos
     const response = await client.secrets().listSecrets({
       environment: "dev", 
       projectId: process.env.INFISICAL_PROJECT_ID
     });
 
+    // 3. Injeta no process.env antes de carregar o RabbitMQ
     if (response && response.secrets) {
       response.secrets.forEach(s => {
         process.env[s.secretKey] = s.secretValue;
       });
-      console.log('[Infisical] Segredos injetados!');
-      
-      // LINHA DE DEBUG PARA O PROFESSOR VER:
-      console.log(`[DEBUG] A URL do RabbitMQ vinda do Infisical é: ${process.env.RABBITMQ_URL}`);
+      console.log('[Infisical] Segredos injetados no process.env com sucesso!');
     }
 
-    // Tenta conectar no RabbitMQ
-    await connect().catch((err) => {
-      console.error('[RabbitMQ] Erro de conexão:', err.message);
-    });
+    // 4. IMPORTAÇÃO DINÂMICA: O RabbitMQ só é carregado após os segredos estarem prontos
+    const { connect } = require('./config/rabbitmq');
+    await connect();
 
-    const fastify = buildApp();
-    await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    console.log(`[Server] Rodando na porta ${PORT}`);
+    // 5. Inicia o Fastify
+    const buildApp = require('./app');
+    const app = await buildApp();
+    
+    // EXIBE AS ROTAS ATIVAS NO TERMINAL (Útil para debugar o 404)
+    console.log('--- Rotas Registradas ---');
+    console.log(app.printRoutes());
+    console.log('-------------------------');
+
+    const port = process.env.PORT || 3000;
+    await app.listen({ port, host: '0.0.0.0' });
+    console.log(`[Server] Microserviço a correr em: http://localhost:${port}`);
 
   } catch (err) {
-    console.error('[Server] Erro crítico:', err.message);
+    console.error('[Fatal] Erro ao iniciar:', err.message);
     process.exit(1);
   }
 }
