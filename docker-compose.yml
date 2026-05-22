@@ -1,40 +1,43 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  # RabbitMQ para mensageria
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq_biblioteca
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=adminadmin
+  usuario:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: biblioteca-usuario
+    restart: unless-stopped
 
-  # Banco de Dados MySQL
-  db_usuarios:
-    image: mysql:8.0
-    container_name: db_usuarios_mysql
-    environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=biblioteca_usuarios
-    ports:
-      - "3307:3306"
-
-  # Seu Microsserviço
-  micro_usuario:
-    build: ./microservico_usuario
-    container_name: ms_usuario
     ports:
       - "9501:9501"
-    depends_on:
-      - rabbitmq
-      - db_usuarios
-    environment:
-      - PORT=9501
-      - INFISICAL_CLIENT_ID=b0b1a648-49bd-4f18-95e4-6fb471afcd01
-      - INFISICAL_CLIENT_SECRET=f4436e6fafa6ca73f5d8a63ea7909835635d79859c9eee4d538e97c790fd8b81
-      - INFISICAL_PROJECT_ID=dd1b1e55-c7fb-4759-95c1-ece438ab9df9
 
-      
+    environment:
+      PORT:     9501
+      NODE_ENV: production
+      INFISICAL_ENV: prod
+
+      # Service Token do Infisical (https://app.infisical.com)
+      # Gere em: Project → Access Control → Service Tokens
+      INFISICAL_TOKEN:      ${INFISICAL_TOKEN}
+      INFISICAL_PROJECT_ID: ${INFISICAL_PROJECT_ID}
+
+      # Banco de dados — vem do Infisical em produção
+      DATABASE_URL: ${DATABASE_URL}
+
+      # RabbitMQ
+      RABBITMQ_URL:             ${RABBITMQ_URL:-amqp://admin:adminadmin@academico3.rj.senac.br:5672}
+      RABBITMQ_RECONNECT_DELAY: ${RABBITMQ_RECONNECT_DELAY:-5000}
+
+    networks:
+      - biblioteca-net
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  biblioteca-net:
+    name: biblioteca-net
+    driver: bridge

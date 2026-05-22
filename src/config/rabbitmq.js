@@ -1,33 +1,90 @@
+/**
+ * src/config/rabbitmq.js
+ *
+ * Gerencia a conexão persistente com o RabbitMQ.
+ * Reconecta automaticamente em caso de queda.
+ *
+ * Padrão idêntico ao microsserviço de Empréstimos.
+ */
+
 const amqplib = require('amqplib');
 
-let connection;
-let channel;
+const RABBITMQ_URL       = process.env.RABBITMQ_URL || 'amqp://admin:adminadmin@localhost:5672';
+const RECONNECT_DELAY_MS = Number(process.env.RABBITMQ_RECONNECT_DELAY) || 5000;
+const EXCHANGE           = 'biblioteca';
+const EXCHANGE_TYPE      = 'topic';
+
+let connection = null;
+let channel    = null;
+let connecting = false;
 
 async function connect() {
-  // A URL é lida de dentro da função para garantir que pega o valor do Infisical
-  const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://admin:adminadmin@127.0.0.1:5672';
-  
+  if (connecting) return;
+  connecting = true;
+
   try {
+    console.log('[RabbitMQ] Conectando em', RABBITMQ_URL.replace(/:\/\/.*@/, '://***@'));
     connection = await amqplib.connect(RABBITMQ_URL);
-    channel = await connection.createChannel();
-    console.log('[RabbitMQ] Ligado com sucesso à URL:', RABBITMQ_URL.split('@')[1]);
-    
-    connection.on('error', (err) => {
-      console.error('[RabbitMQ] Erro na ligação:', err.message);
-      setTimeout(connect, 5000);
-    });
+    channel    = await connection.createChannel();
+
+    await channel.assertExchange(EXCHANGE, EXCHANGE_TYPE, { durable: true });
+
+    console.log('[RabbitMQ] Conectado. Exchange:', EXCHANGE);
+    connecting = false;
 
     connection.on('close', () => {
-      console.warn('[RabbitMQ] Ligação fechada. Tentando reconectar...');
-      setTimeout(connect, 5000);
+      console.warn('[RabbitMQ] Conexão encerrada. Reconectando em', RECONNECT_DELAY_MS, 'ms...');
+      connection = null;
+      channel    = null;
+      connecting = false;
+      setTimeout(connect, RECONNECT_DELAY_MS);
+    });
+
+    connection.on('error', (err) => {
+      console.error('[RabbitMQ] Erro na conexão:', err.message);
     });
 
   } catch (err) {
-    console.error('[RabbitMQ] Erro ao conectar:', err.message);
-    setTimeout(connect, 5000);
+    connecting = false;
+    console.error('[RabbitMQ] Falha ao conectar:', err.message, '— tentando novamente em', RECONNECT_DELAY_MS, 'ms');
+    setTimeout(connect, RECONNECT_DELAY_MS);
   }
 }
 
-const getChannel = () => channel;
+async function publish(routingKey, payload) {
+  if (!channel) {
+    console.warn('[RabbitMQ] Canal indisponível. Evento não publicado:', routingKey);
+    return false;
+  }
+  try {
+    const buffer = Buffer.from(JSON.stringify(payload));
+    channel.publish(EXCHANGE, routingKey, buffer, {
+      persistent:  true,
+      contentType: 'application/json',
+      timestamp:   Math.floor(Date.now() / 1000),
+      appId:       'biblioteca-usuario',
+    });
+    console.log('[RabbitMQ] Publicado:', routingKey, payload);
+    return true;
+  } catch (err) {
+    console.error('[RabbitMQ] Erro ao publicar:', err.message);
+    return false;
+  }
+}
 
-module.exports = { connect, getChannel };
+async function close() {
+  try {
+    if (channel)    await channel.close();
+    if (connection) await connection.close();
+    console.log('[RabbitMQ] Conexão encerrada com segurança.');
+  } catch (_) {}
+}
+
+const EVENTS = {
+  USUARIO_CRIADO:      'biblioteca.usuario.criado',
+  USUARIO_ATUALIZADO:  'biblioteca.usuario.atualizado',
+  USUARIO_REMOVIDO:    'biblioteca.usuario.removido',
+  USUARIO_BLOQUEADO:   'biblioteca.usuario.bloqueado',
+};
+
+module.exports = { connect, publish, close, EVENTS };

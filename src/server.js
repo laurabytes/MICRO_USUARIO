@@ -1,55 +1,53 @@
+/**
+ * server.js
+ * Ordem de boot:
+ *  1. dotenv       (desenvolvimento local)
+ *  2. Infisical    (produção — carrega secrets do vault)
+ *  3. RabbitMQ     (conecta em background, não bloqueia)
+ *  4. Fastify      (sobe o servidor HTTP)
+ */
 require('dotenv').config();
-const { InfisicalSDK } = require('@infisical/sdk');
+
+const { loadSecrets }    = require('./config/infisical');
+const buildApp           = require('./app');
+const { connect, close } = require('./config/rabbitmq');
+
+const PORT = Number(process.env.PORT) || 3000;
 
 async function start() {
+  // 1. Carrega secrets do Infisical (em produção)
+  await loadSecrets();
+
+  // 2. Conecta ao RabbitMQ em background
+  connect().catch((err) => {
+    console.error('[RabbitMQ] Erro inicial (tentará reconectar):', err.message);
+  });
+
+  // 3. Sobe o servidor HTTP
+  const fastify = await buildApp();
+
+  console.log('--- Rotas Registradas ---');
+  console.log(fastify.printRoutes());
+  console.log('-------------------------');
+
   try {
-    // 1. Configura o SDK apontando para o IP local (estabilidade no Windows)
-    const client = new InfisicalSDK({ 
-      siteUrl: "http://127.0.0.1:8081" 
-    });
-
-    console.log('[Infisical] Autenticando...');
-
-    await client.auth().universalAuth.login({
-      clientId: process.env.INFISICAL_CLIENT_ID,
-      clientSecret: process.env.INFISICAL_CLIENT_SECRET
-    });
-
-    // 2. Busca segredos
-    const response = await client.secrets().listSecrets({
-      environment: "dev", 
-      projectId: process.env.INFISICAL_PROJECT_ID
-    });
-
-    // 3. Injeta no process.env antes de carregar o RabbitMQ
-    if (response && response.secrets) {
-      response.secrets.forEach(s => {
-        process.env[s.secretKey] = s.secretValue;
-      });
-      console.log('[Infisical] Segredos injetados no process.env com sucesso!');
-    }
-
-    // 4. IMPORTAÇÃO DINÂMICA: O RabbitMQ só é carregado após os segredos estarem prontos
-    const { connect } = require('./config/rabbitmq');
-    await connect();
-
-    // 5. Inicia o Fastify
-    const buildApp = require('./app');
-    const app = await buildApp();
-    
-    // EXIBE AS ROTAS ATIVAS NO TERMINAL (Útil para debugar o 404)
-    console.log('--- Rotas Registradas ---');
-    console.log(app.printRoutes());
-    console.log('-------------------------');
-
-    const port = process.env.PORT || 3000;
-    await app.listen({ port, host: '0.0.0.0' });
-    console.log(`[Server] Microserviço a correr em: http://localhost:${port}`);
-
+    await fastify.listen({ port: PORT, host: '0.0.0.0' });
+    console.log(`[Server] Microsserviço de Usuários rodando na porta ${PORT}`);
   } catch (err) {
-    console.error('[Fatal] Erro ao iniciar:', err.message);
+    fastify.log.error(err);
     process.exit(1);
   }
+
+  // 4. Graceful shutdown
+  const shutdown = async (signal) => {
+    console.log(`[Server] ${signal} recebido. Encerrando...`);
+    await fastify.close();
+    await close();
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT',  () => shutdown('SIGINT'));
 }
 
 start();

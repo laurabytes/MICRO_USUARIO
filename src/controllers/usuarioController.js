@@ -1,6 +1,12 @@
 const service = require('../services/usuarioService');
-
-// os try catch evitam do servidor crashar se o banco der erro
+const {
+  validarCriarUsuario,
+  validarAtualizarUsuario,
+  validarAlterarStatus,
+  validarAtualizarCargo,
+  validarEndereco,
+  validarTelefone
+} = require('../utils/validation');
 
 async function listar(req, reply) {
   try {
@@ -23,8 +29,8 @@ async function obterPorId(req, reply) {
 
 async function criar(req, reply) {
   try {
+    validarCriarUsuario(req.body);
     const data = await service.criar(req.body);
-    // 201 eh o codigo certo pra criacao
     return reply.code(201).send({ success: true, data });
   } catch (error) {
     return reply.status(400).send({ success: false, error: error.message });
@@ -33,6 +39,7 @@ async function criar(req, reply) {
 
 async function atualizar(req, reply) {
   try {
+    validarAtualizarUsuario(req.body);
     const data = await service.atualizar(req.params.id, req.body);
     return reply.send({ success: true, data });
   } catch (error) {
@@ -42,6 +49,7 @@ async function atualizar(req, reply) {
 
 async function alterarStatus(req, reply) {
   try {
+    validarAlterarStatus(req.body);
     const data = await service.alterarStatus(req.params.id, req.body.status);
     return reply.send({ success: true, data });
   } catch (error) {
@@ -58,8 +66,6 @@ async function remover(req, reply) {
   }
 }
 
-// === controllers novos pra bater a cota de endereco/telefone ===
-
 async function listarEnderecos(req, reply) {
   try {
     const data = await service.listarEnderecos(req.params.id);
@@ -71,6 +77,7 @@ async function listarEnderecos(req, reply) {
 
 async function atualizarEndereco(req, reply) {
   try {
+    validarEndereco(req.body);
     const data = await service.atualizarEndereco(req.params.id, req.body);
     return reply.send({ success: true, data });
   } catch (error) {
@@ -98,6 +105,7 @@ async function listarTelefones(req, reply) {
 
 async function atualizarTelefone(req, reply) {
   try {
+    validarTelefone(req.body);
     const data = await service.atualizarTelefone(req.params.id, req.body);
     return reply.send({ success: true, data });
   } catch (error) {
@@ -114,12 +122,10 @@ async function limparTelefone(req, reply) {
   }
 }
 
-// controllers das rotas de pesquisa e filtro
-
 async function buscarPorEmail(req, reply) {
   try {
-    // pega da query url (?email=...)
     const { email } = req.query;
+    if (!email) return reply.status(400).send({ success: false, error: 'Parâmetro email é obrigatório' });
     const usuario = await service.buscarPorEmail(email);
     if (!usuario) return reply.status(404).send({ success: false, message: 'Email não encontrado' });
     return reply.send({ success: true, data: usuario });
@@ -139,15 +145,14 @@ async function listarInativos(req, reply) {
 
 async function atualizarCargo(req, reply) {
   try {
-    const { tipo } = req.body;
-    const data = await service.atualizarCargo(req.params.id, tipo);
+    validarAtualizarCargo(req.body);
+    const data = await service.atualizarCargo(req.params.id, req.body.tipo);
     return reply.send({ success: true, data });
   } catch (error) {
     return reply.status(400).send({ success: false, error: error.message });
   }
 }
 
-// pega tudo do usuario pra exportar os dados
 async function exportarDados(req, reply) {
   try {
     const data = await service.obterPorId(req.params.id);
@@ -161,13 +166,13 @@ async function exportarDados(req, reply) {
 async function obterLogs(req, reply) {
   try {
     const logs = await service.obterLogs(req.params.id);
-    return reply.send({ success: true, data: logs, note: "tabela de logs ainda nao implementada" });
+    return reply.send({ success: true, data: logs, note: 'tabela de logs ainda não implementada' });
   } catch (error) {
     return reply.status(500).send({ success: false, error: error.message });
   }
 }
 
-module.exports = { 
+module.exports = {
   listar, obterPorId, criar, atualizar, alterarStatus, remover,
   listarEnderecos, atualizarEndereco, limparEndereco,
   listarTelefones, atualizarTelefone, limparTelefone,
