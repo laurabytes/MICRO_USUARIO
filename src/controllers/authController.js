@@ -6,8 +6,14 @@ async function login(req, reply) {
     validarLogin(req.body);
     const { email, senha } = req.body;
     const data = await authService.login(email, senha);
+    
+    // REMOVA: console.log(error) <- Isso aqui quebra o código se o login der certo!
+    
     return reply.send({ success: true, data });
   } catch (error) {
+    // Caso queira debugar o que deu errado (Credenciais inválidas, conta inativa, etc)
+    console.error("Erro na autenticação:", error.message);
+    
     return reply.status(401).send({ success: false, error: error.message });
   }
 }

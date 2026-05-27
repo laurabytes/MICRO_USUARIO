@@ -11,7 +11,6 @@ async function login(email, senha) {
   if (!usuario) throw new Error('Credenciais inválidas');
   if (usuario.usuario_status !== 'Ativo') throw new Error('Conta inativa ou bloqueada');
 
-  // Verifica se a senha bate (suporta tanto senhas criptografadas quanto as de teste antigas)
   const senhaValida = await bcrypt.compare(senha, usuario.usuario_senha).catch(() => false);
   const senhaEmTextoPlano = senha === usuario.usuario_senha;
 
@@ -30,7 +29,17 @@ async function login(email, senha) {
     { expiresIn: '7d' }
   );
 
-  return { token, refreshToken };
+  // MODIFICAÇÃO: Retorna os dados do usuário para o Frontend salvar no Contexto
+  return { 
+    token, 
+    refreshToken,
+    usuario: {
+      usuario_id: usuario.usuario_id,
+      usuario_nome: usuario.usuario_nome,
+      usuario_email: usuario.usuario_email,
+      usuario_tipo: usuario.usuario_tipo // Essencial para o seu isAdmin funcionar!
+    }
+  };
 }
 
 async function refresh(refreshTokenAntigo) {

@@ -12,6 +12,7 @@ const { loadSecrets }    = require('./config/infisical');
 const buildApp           = require('./app');
 const { connect, close } = require('./config/rabbitmq');
 
+
 const PORT = Number(process.env.PORT) || 3000;
 
 async function start() {
