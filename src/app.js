@@ -1,30 +1,23 @@
 const Fastify = require('fastify');
-const cors = require('@fastify/cors'); // 1. Importa o plugin de CORS
+const cors = require('@fastify/cors');
 const usuarioRoutes = require('./routes/usuarios');
-const authRoutes = require('./routes/auth'); // Novo import para autenticação
+const authRoutes = require('./routes/auth');
 const prismaPlugin = require('./plugins/prisma');
-
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'chave_secreta_biblioteca_2026';
 function buildApp(opts = {}) {
   const fastify = Fastify({ logger: true, ...opts });
-
-  // 2. Regista o CORS antes das rotas e plugins de rotas
-  fastify.register(cors, {
-    origin: true, // Permite requisições de qualquer origem (essencial para o Chrome rodando local ou em outro domínio)
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Libera os métodos HTTP comuns
-    allowedHeaders: ['Content-Type', 'Authorization'], // Garante que headers de JSON e Tokens JWT passem sem bloqueio
-  });
-
-  // Plugin do Prisma
+  fastify.register(cors, { origin: true, methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] });
   fastify.register(prismaPlugin);
-
-  // Health check
+  fastify.addHook('onRequest', async (req) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try { req.usuario = jwt.verify(authHeader.replace('Bearer ', ''), JWT_SECRET); } catch {}
+    }
+  });
   fastify.get('/health', async () => ({ status: 'ok', servico: 'usuarios' }));
-
-  // Registo de Rotas
   fastify.register(usuarioRoutes, { prefix: '/usuarios' });
-  fastify.register(authRoutes, { prefix: '/auth' }); // Registo das rotas de login e validação
-
+  fastify.register(authRoutes, { prefix: '/auth' });
   return fastify;
 }
-
 module.exports = buildApp;
