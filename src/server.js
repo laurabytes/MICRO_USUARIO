@@ -1,55 +1,71 @@
-/**
- * server.js
- * Ordem de boot:
- * 1. dotenv       (desenvolvimento local)
- * 2. Infisical    (produção — carrega secrets do vault)
- * 3. RabbitMQ     (conecta em background, não bloqueia)
- * 4. Fastify      (sobe o servidor HTTP)
- */
+const fastify = require('fastify')({ logger: true });
 require('dotenv').config();
 
-const { loadSecrets }    = require('./config/infisical');
-const { connect, close } = require('./config/rabbitmq');
+const { loadSecrets } = require('./config/infisical');
 
-const PORT = Number(process.env.PORT) || 3000;
+// Configura a porta correta do microsserviço (9501) vinda do ambiente ou fallback
+const PORT = Number(process.env.PORT) || 9501;
 
-async function start() {
-  // 1. Carrega secrets do Infisical (em produção) PRIMEIRO
-  await loadSecrets();
+const start = async () => {
+    try {
+        // 1. Carrega os secrets do Infisical PRIMEIRO (idêntico ao catálogo)
+        await loadSecrets();
 
-  // 2. SÓ AGORA importamos o app, para garantir que o process.env.JWT_SECRET já existe
-  const buildApp = require('./app');
+        // 2. Importa e configura as dependências após o carregamento do cofre
+        const jwt = require('jsonwebtoken');
+        const JWT_SECRET = process.env.JWT_SECRET || 'chave_secreta_biblioteca_2026';
+        
+        const { connect, close } = require('./config/rabbitmq');
+        fastify.register(require('./plugins/prisma'));
 
-  // 3. Conecta ao RabbitMQ em background
-  connect().catch((err) => {
-    console.error('[RabbitMQ] Erro inicial (tentará reconectar):', err.message);
-  });
+        fastify.register(require('@fastify/cors'), {
+            origin: true, 
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization']
+        });
 
-  // 4. Sobe o servidor HTTP
-  const fastify = await buildApp();
+        // Hook de autenticação global extraído do app.js
+        fastify.addHook('onRequest', async (req) => {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                try { 
+                    req.usuario = jwt.verify(authHeader.replace('Bearer ', ''), JWT_SECRET); 
+                } catch {}
+            }
+        });
 
-  console.log('--- Rotas Registradas ---');
-  console.log(fastify.printRoutes());
-  console.log('-------------------------');
+        // Rota de Health integrada
+        fastify.get('/health', async () => {
+            return { status: 'ok', servico: 'usuarios' };
+        });
 
-  try {
-    await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    console.log(`[Server] Microsserviço de Usuários rodando na porta ${PORT}`);
-  } catch (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
+        // Registro das rotas específicas do micro de usuário
+        fastify.register(require('./routes/usuarios'), { prefix: '/usuarios' });
+        fastify.register(require('./routes/auth'), { prefix: '/auth' });
 
-  // 5. Graceful shutdown
-  const shutdown = async (signal) => {
-    console.log(`[Server] ${signal} recebido. Encerrando...`);
-    await fastify.close();
-    await close();
-    process.exit(0);
-  };
+        // Conexão com o broker do RabbitMQ
+        await connect();
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT',  () => shutdown('SIGINT'));
-}
+        // 3. Sobe o servidor HTTP na porta dinâmica corrigida
+        await fastify.listen({ port: PORT, host: '0.0.0.0' });
+
+        console.log(`[Server] Microsserviço de Usuários rodando perfeitamente na porta ${PORT}`);
+        
+        // 4. Graceful shutdown para encerrar os processos de forma limpa
+        const shutdown = async (signal) => {
+            console.log(`[Server] ${signal} recebido. Encerrando...`);
+            await fastify.close();
+            await close();
+            process.exit(0);
+        };
+
+        process.on('SIGTERM', () => shutdown('SIGTERM'));
+        process.on('SIGINT',  () => shutdown('SIGINT'));
+
+    } catch (err) {
+        fastify.log.error(err);
+        process.exit(1);
+    }
+};
 
 start();
