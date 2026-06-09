@@ -12,10 +12,7 @@ const INFISICAL_PROJECT_ID = process.env.INFISICAL_PROJECT_ID || '6c550174-d6d5-
 const INFISICAL_ENV        = process.env.INFISICAL_ENV        || 'dev'; // Mude para 'production' ou o slug do ambiente correto se necessário
 
 async function loadSecrets() {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[Infisical] NODE_ENV !== production — usando variáveis locais (.env)');
-    return;
-  }
+  
 
   if (!CLIENT_ID || !CLIENT_SECRET || !INFISICAL_PROJECT_ID) {
     console.error('[Infisical] ❌ Credenciais incompletas. Faltam chaves do Infisical.');
