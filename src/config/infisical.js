@@ -9,9 +9,9 @@
 
 const { InfisicalSDK } = require('@infisical/sdk');
 
-const INFISICAL_TOKEN      = process.env.INFISICAL_TOKEN      || 'st.77c4fb00-59ad-4761-8fca-0ca2986a996f.be07fb442b0b9714120d9b53cd2fb6d6.37e739d0e26104262a26000d4a8d3f47';
-const INFISICAL_PROJECT_ID = process.env.INFISICAL_PROJECT_ID || '4be3bccd-8b94-4540-9611-d88cbef6950b';
-const INFISICAL_ENV        = process.env.INFISICAL_ENV        || 'prod';
+const CLIENT_ID      = process.env.CLIENT_ID      || '0f21ce6e-4709-4498-a418-f1736aa85317';
+const INFISICAL_PROJECT_ID = process.env.INFISICAL_PROJECT_ID || 'cb64198c-9fdb-4106-94a3-824e4ba6e6d4';
+const INFISICAL_ENV        = process.env.INFISICAL_ENV        || 'e25f7837a52bfd56fe3453ba2f60d5525937a62a301a056ce178cf9adb9e8923';
 
 async function loadSecrets() {
   if (process.env.NODE_ENV !== 'production') {
@@ -19,8 +19,8 @@ async function loadSecrets() {
     return;
   }
 
-  if (!INFISICAL_TOKEN || !INFISICAL_PROJECT_ID) {
-    console.error('[Infisical] ❌ INFISICAL_TOKEN ou INFISICAL_PROJECT_ID não definidos.');
+  if (!CLIENT_ID || !INFISICAL_PROJECT_ID) {
+    console.error('[Infisical] ❌ CLIENT_ID ou INFISICAL_PROJECT_ID não definidos.');
     process.exit(1);
   }
 

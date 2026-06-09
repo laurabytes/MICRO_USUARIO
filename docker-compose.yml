@@ -14,12 +14,13 @@ services:
     environment:
       PORT:     9501
       NODE_ENV: production
-      INFISICAL_ENV: prod
+      INFISICAL_ENV: ${INFISICAL_ENV}
 
       # Service Token do Infisical (https://app.infisical.com)
       # Gere em: Project → Access Control → Service Tokens
-      INFISICAL_TOKEN:      ${INFISICAL_TOKEN}
+      CLIENT_ID:      ${CLIENT_ID}
       INFISICAL_PROJECT_ID: ${INFISICAL_PROJECT_ID}
+      INFISICAL_ENV: ${INFISICAL_ENV}
 
       # Banco de dados — vem do Infisical em produção
       DATABASE_URL: ${DATABASE_URL}
