@@ -209,7 +209,17 @@ async function exibirFoto(req, reply) {
   try {
     const usuario = await service.obterFoto(req.params.id);
     if (!usuario || !usuario.usuario_imagem || usuario.usuario_imagem.length === 0) {
-      return reply.status(404).send({ success: false, message: 'Foto não encontrada' });
+      // Retorna uma imagem SVG padrão gerada dinamicamente para evitar erro 404 no Console do Frontend!
+      const nome = usuario?.usuario_nome || '??';
+      const iniciais = nome.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+        <rect width="100%" height="100%" fill="#94a3b8" />
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-size="80" font-family="sans-serif" font-weight="bold">${iniciais}</text>
+      </svg>`;
+      return reply
+        .header('Content-Type', 'image/svg+xml')
+        .header('Cache-Control', 'no-cache')
+        .send(svg);
     }
 
     const extensao = (usuario.usuario_extensao || 'jpg').toLowerCase();

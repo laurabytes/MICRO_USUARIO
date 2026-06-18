@@ -30,6 +30,8 @@ async function criar(dados) {
         create: {
           endereco_rua: dados.endereco?.rua || 'Não informado',
           endereco_numero: dados.endereco?.numero || 'S/N',
+          endereco_complemento: dados.endereco?.complemento || null,
+          endereco_bairro: dados.endereco?.bairro || null,
           endereco_cidade: dados.endereco?.cidade || 'Não informado',
           endereco_estado: dados.endereco?.estado || 'NI',
           endereco_cep: dados.endereco?.cep || '00000000'
@@ -87,6 +89,8 @@ async function atualizarEndereco(usuarioId, dadosEndereco) {
     data: {
       endereco_rua: dadosEndereco.rua,
       endereco_numero: dadosEndereco.numero,
+      endereco_complemento: dadosEndereco.complemento,
+      endereco_bairro: dadosEndereco.bairro,
       endereco_cidade: dadosEndereco.cidade,
       endereco_estado: dadosEndereco.estado,
       endereco_cep: dadosEndereco.cep
@@ -96,7 +100,7 @@ async function atualizarEndereco(usuarioId, dadosEndereco) {
 
 // simula q apagou o endereco voltando pros dados de "nao informado"
 async function limparEndereco(usuarioId) {
-  return atualizarEndereco(usuarioId, { rua: 'Não informado', numero: 'S/N', cidade: 'Não informado', estado: 'NI', cep: '00000000' });
+  return atualizarEndereco(usuarioId, { rua: 'Não informado', numero: 'S/N', complemento: null, bairro: null, cidade: 'Não informado', estado: 'NI', cep: '00000000' });
 }
 
 // retorna o telefone numa lista
@@ -169,7 +173,7 @@ async function atualizarFoto(id, imagemBuffer, extensao, imagemNome) {
 async function obterFoto(id) {
   const usuario = await prisma.usuario.findUnique({
     where: { usuario_id: Number(id) },
-    select: { usuario_imagem: true, usuario_extensao: true, usuario_imagem_nome: true }
+    select: { usuario_imagem: true, usuario_extensao: true, usuario_imagem_nome: true, usuario_nome: true }
   });
   return usuario;
 }
