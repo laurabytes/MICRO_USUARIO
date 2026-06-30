@@ -6,16 +6,18 @@ async function login(req, reply) {
     validarLogin(req.body);
     const { email, senha } = req.body;
     const data = await authService.login(email, senha);
-    
-    // REMOVA: console.log(error) <- Isso aqui quebra o código se o login der certo!
-    
     return reply.send({ success: true, data });
   } catch (error) {
-    // Caso queira debugar o que deu errado (Credenciais inválidas, conta inativa, etc)
-    console.error("Erro na autenticação:", error.message);
-    
+    console.error('[Auth] Erro no login:', error.message);
     return reply.status(401).send({ success: false, error: error.message });
   }
+}
+
+async function logout(req, reply) {
+  // O JWT é stateless — o logout real acontece no cliente ao apagar o token.
+  // Aqui confirmamos o pedido para o frontend poder agir (limpar storage, cookie, etc.)
+  // Para invalidação real de tokens, seria necessário uma blacklist (ex: Redis).
+  return reply.send({ success: true, message: 'Sessão encerrada com sucesso' });
 }
 
 async function refresh(req, reply) {
@@ -35,8 +37,6 @@ async function validarToken(req, reply) {
   if (!token) return reply.status(400).send({ success: false, error: 'Token não fornecido' });
 
   const data = await authService.validarToken(token);
-
-  // Retorna 401 se inválido, 200 se válido
   if (!data.valido) {
     return reply.status(401).send({ success: false, data });
   }
@@ -54,4 +54,4 @@ async function alterarSenha(req, reply) {
   }
 }
 
-module.exports = { login, refresh, validarToken, alterarSenha };
+module.exports = { login, logout, refresh, validarToken, alterarSenha };

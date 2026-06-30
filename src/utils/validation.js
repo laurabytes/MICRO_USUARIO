@@ -140,7 +140,8 @@ function validarTelefone(dados) {
     erros.push('numero: obrigatório (8 a 13 dígitos)');
   }
 
-  const tiposValidos = ['Celular', 'Fixo', 'Comercial'];
+  // Deve bater com o enum telefone_telefone_tipo do schema Prisma
+  const tiposValidos = ['Celular', 'Residencial', 'Comercial'];
   if (dados.tipo && !tiposValidos.includes(dados.tipo)) {
     erros.push(`tipo: deve ser um de [${tiposValidos.join(', ')}]`);
   }

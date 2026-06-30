@@ -29,8 +29,15 @@ async function obterPorId(req, reply) {
 
 async function criar(req, reply) {
   try {
-    validarCriarUsuario(req.body);
-    const data = await service.criar(req.body);
+    // Esta rota é pública (tela de cadastro). Sem isso, qualquer pessoa
+    // não autenticada poderia mandar { tipo: 'Bibliotecario' } no corpo da
+    // requisição e criar uma conta de administrador para si mesma.
+    // Só um Bibliotecario já logado pode escolher o cargo do novo usuário.
+    const souBibliotecario = req.usuario?.tipo === 'Bibliotecario';
+    const corpo = { ...req.body, tipo: souBibliotecario ? req.body.tipo : 'Leitor' };
+
+    validarCriarUsuario(corpo);
+    const data = await service.criar(corpo);
     return reply.code(201).send({ success: true, data });
   } catch (error) {
     return reply.status(400).send({ success: false, error: error.message });
