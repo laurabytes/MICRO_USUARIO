@@ -1,6 +1,8 @@
 const authService = require('../services/authService');
 const { validarLogin, validarAlterarSenha } = require('../utils/validation');
 
+const ERROS_CREDENCIAL = ['Credenciais inválidas', 'Conta inativa ou bloqueada'];
+
 async function login(req, reply) {
   try {
     validarLogin(req.body);
@@ -9,7 +11,15 @@ async function login(req, reply) {
     return reply.send({ success: true, data });
   } catch (error) {
     console.error('[Auth] Erro no login:', error.message);
-    return reply.status(401).send({ success: false, error: error.message });
+
+    // Erro de credencial real -> 401
+    if (ERROS_CREDENCIAL.includes(error.message)) {
+      return reply.status(401).send({ success: false, error: error.message });
+    }
+
+    // Qualquer outra coisa (banco fora do ar, DATABASE_URL ausente, etc.) -> 500
+    // Não expõe o erro interno pro cliente, só loga no servidor.
+    return reply.status(500).send({ success: false, error: 'Erro interno do servidor' });
   }
 }
 
