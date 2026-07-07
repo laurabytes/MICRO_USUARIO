@@ -9,7 +9,7 @@
 
 const amqplib = require('amqplib');
 
-const RABBITMQ_URL       = process.env.RABBITMQ_URL || 'amqp://admin:admin@localhost:5672';
+const RABBITMQ_URL       = process.env.RABBITMQ_URL || 'amqp://admin:admin@10.136.38.50:5672';
 const RECONNECT_DELAY_MS = Number(process.env.RABBITMQ_RECONNECT_DELAY) || 5000;
 const EXCHANGE           = 'biblioteca';
 const EXCHANGE_TYPE      = 'topic';
