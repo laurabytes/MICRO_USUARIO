@@ -2,9 +2,7 @@
  * src/config/infisical.js
  * SDK @infisical/sdk v5 — suporta Universal Auth ou Service Token (AccessToken)
  */
-
 const { InfisicalSDK } = require('@infisical/sdk');
-
 const CLIENT_ID            = process.env.CLIENT_ID            || '3dcf22f2-e6a1-40c3-b3ec-2d553fd42620';
 const CLIENT_SECRET        = process.env.CLIENT_SECRET        || 'ccab5e06840ed91b218513a3e5cf450999ff52e0d1e98719edd199853b3f48a8';
 const INFISICAL_TOKEN      = process.env.INFISICAL_TOKEN;
@@ -12,18 +10,13 @@ const INFISICAL_PROJECT_ID = process.env.INFISICAL_PROJECT_ID || '6c550174-d6d5-
 const INFISICAL_ENV        = process.env.INFISICAL_ENV        || 'dev';
 
 async function loadSecrets() {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[Infisical] NODE_ENV !== production — usando variáveis locais (.env)');
-    return;
-  }
-
   // Verifica se temos pelo menos uma forma válida de autenticação
   const temServiceToken = !!INFISICAL_TOKEN;
   const temUniversalAuth = !!(CLIENT_ID && CLIENT_SECRET);
 
   if (!temServiceToken && !temUniversalAuth) {
-    console.error('[Infisical] ❌ Credenciais incompletas. Defina INFISICAL_TOKEN ou CLIENT_ID/CLIENT_SECRET.');
-    process.exit(1);
+    console.log('[Infisical] Credenciais ausentes — usando variáveis locais (.env).');
+    return;
   }
 
   if (!INFISICAL_PROJECT_ID) {
@@ -33,7 +26,6 @@ async function loadSecrets() {
 
   try {
     console.log(`[Infisical] Conectando... projeto: ${INFISICAL_PROJECT_ID} | ambiente: ${INFISICAL_ENV}`);
-
     const client = new InfisicalSDK({ siteUrl: 'https://app.infisical.com' });
 
     if (temServiceToken) {
